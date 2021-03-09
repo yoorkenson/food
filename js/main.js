@@ -41,7 +41,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // TIMER
 
-    const deadline = '2021-03-15';
+    const deadline = '2021-03-31';
 
     function getTimeRemaining(endtime) {
         const t = Date.parse(endtime) - Date.parse(new Date()),
@@ -96,11 +96,13 @@ window.addEventListener('DOMContentLoaded', () => {
     // MODAL
 
     const modalOpen = document.querySelectorAll('[data-modal]'),
-          modalClose = document.querySelector('[data-close]'),
+        //   modalClose = document.querySelector('[data-close]'),
           modal = document.querySelector('.modal');
 
     function openModal() {
-        modal.classList.toggle('show');
+        modal.classList.add('show');
+        modal.classList.remove('hide');
+        // modal.classList.toggle('show');
         document.body.style.overflow = 'hidden';
         // clearInterval(modalTimerId);
     }
@@ -114,16 +116,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
 
     function closeMod() {
-        // modal.classList.add('hide');
-        // modal.classList.remove('show');
-        modal.classList.toggle('show');
+        modal.classList.add('hide');
+        modal.classList.remove('show');
+        // modal.classList.toggle('show');
         document.body.style.overflow = '';
     }
 
-    modalClose.addEventListener('click', closeMod); //передаем название функции, она будет выполнена ток после клика
+    // modalClose.addEventListener('click', closeMod); //передаем название функции, она будет выполнена ток после клика
 
     modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
+        if (e.target === modal || e.target.getAttribute('data-close') == '') {
             closeMod(); //вызываем функцию, т.к ее рил надо выполнить
         }
     });
@@ -134,7 +136,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // const modalTimerId = setTimeout(openModal, 3000);
+    const modalTimerId = setTimeout(openModal, 55000);
     
     function showModalByScroll() {
         if (window.pageYOffset + document.documentElement.clientHeight >= document.documentElement.scrollHeight) {
@@ -223,7 +225,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const forms = document.querySelectorAll('form');
 
     const message = {
-        loading: 'загрузка',
+        loading: 'icons/spinner.svg',
         success: 'спасибо',
         failure: 'не получилось'
     };
@@ -236,40 +238,72 @@ window.addEventListener('DOMContentLoaded', () => {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
 
-            const statusMessage = document.createElement('div');
-            statusMessage.classList.add('status');
-            statusMessage.textContent = message.loading;
-            form.append(statusMessage);
+            const statusMessage = document.createElement('img');
+            statusMessage.src = message.loading;
+            statusMessage.style.cssText = `
+                display: block;
+                margin: 0 auto;
+            `;
+            form.insertAdjacentElement('afterend', statusMessage);
+           
 
-            const request = new XMLHttpRequest();
-            request.open('POST', 'server.php');
-            
-            // request.setRequestHeader('Content-type', 'nultipart/form-data'); //для form-data не надо писать заголовок
-            request.setRequestHeader('Content-type', 'application/json'); // для json
             const formData = new FormData(form);
-            // request.send(formData); //для form data
-            const object ={};
+
+            const object = {}; //для перевода form-data в json
             formData.forEach(function(value, key) {
                 object[key] = value;
             });
 
-            const json = JSON.stringify(object);
-
-            request.send(json);
-
-
-            request.addEventListener('load', () => {
-               if (request.status === 200) {
-                   console.log(request.response);
-                   statusMessage.textContent = message.success;
-                   form.reset();
-                   setTimeout(() => {
-                        statusMessage.remove();
-                   }, 2000);
-               } else {
-                statusMessage.textContent = message.failure;
-               }
+            fetch('server.php', {
+                method: 'POST',
+                headers: {
+                    'Content-type': 'application/json'
+                },
+                body: JSON.stringify(object)
+            }).then(data => data.text())
+            .then(data => {
+                console.log(data);
+                showThanksModal(message.success);
+                statusMessage.remove();
+            }).catch(() => {
+                showThanksModal(message.failure);
+            }).finally(() => {
+                form.reset();
             });
         });
     }
+
+    function showThanksModal(message) {
+        const prevModalDialog = document.querySelector('.modal__dialog');
+
+        prevModalDialog.classList.add('hide');
+
+        openModal();
+        const thanksModal = document.createElement('div');
+        thanksModal.classList.add('modal__dialog');
+        thanksModal.innerHTML = `
+            <div class="modal__content">
+                <div class="modal__close" data-close>×</div>
+                <div class="modal__title">${message}</div>
+            </div>
+        `;
+
+        document.querySelector('.modal').append(thanksModal);
+        setTimeout(() => {
+            thanksModal.remove();
+            prevModalDialog.classList.add('show');
+            prevModalDialog.classList.remove('hide');
+            closeMod();
+        }, 4000);
+    }
+
+    // fetch('https://jsonplaceholder.typicode.com/posts', {
+    //     method: "POST",
+    //     body: JSON.stringify({name: 'Alex'}),
+    //     headers: {
+    //         'Content-type': 'application/json'
+    //     }
+    // })
+    //     .then(response => response.json())
+    //     .then(json => console.log(json));
 });
